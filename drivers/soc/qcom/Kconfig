@@ -875,3 +875,4 @@ config QCOM_CX_IPEAK
 	  an interrupt to cDSP block to throttle cDSP fmax.
 
 source "drivers/soc/qcom/memshare/Kconfig"
+source "drivers/soc/qcom/lge/Kconfig"
