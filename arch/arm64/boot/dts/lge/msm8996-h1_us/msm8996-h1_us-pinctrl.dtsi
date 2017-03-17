@@ -10,111 +10,11 @@
  * GNU General Public License for more details.
  */
 
-&soc {
-	tlmm: pinctrl@01010000 {
-		compatible = "qcom,msm8996-pinctrl";
-		reg = <0x01010000 0x300000>;
-		interrupts = <0 208 0>;
-		gpio-controller;
-		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-
-		uart_console_active: uart_console_active {
-			mux {
-				pins = "gpio4", "gpio5";
-				function = "blsp_uart8";
-			};
-
-			config {
-				pins = "gpio4", "gpio5";
-				drive-strength = <2>;
-				bias-bus-hold;
-			};
-		};
-
-		blsp1_uart2_active: blsp1_uart2_active {
-			mux {
-				pins = "gpio41", "gpio42", "gpio43", "gpio44";
-				function = "blsp_uart2";
-			};
-
-			config {
-				pins = "gpio41", "gpio42", "gpio43", "gpio44";
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
-		blsp1_uart2_sleep: blsp1_uart2_sleep {
-			mux {
-				pins = "gpio41", "gpio42", "gpio43", "gpio44";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio41", "gpio42", "gpio43", "gpio44";
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
-		blsp1_uart3_active: blsp1_uart3_active {
-			mux {
-				pins = "gpio45", "gpio46", "gpio47", "gpio48";
-				function = "blsp_uart3";
-			};
-
-			config {
-				pins = "gpio45", "gpio46", "gpio47", "gpio48";
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
-		blsp1_uart3_sleep: blsp1_uart3_sleep {
-			mux {
-				pins = "gpio45", "gpio46", "gpio47", "gpio48";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio45", "gpio46", "gpio47", "gpio48";
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
-
-		blsp1_uart6_active: blsp1_uart6_active {
-			mux {
-				pins = "gpio25", "gpio26", "gpio27", "gpio28";
-				function = "blsp_uart6";
-			};
-
-			config {
-				pins = "gpio25", "gpio26", "gpio27", "gpio28";
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
-		blsp1_uart6_sleep: blsp1_uart6_sleep {
-			mux {
-				pins = "gpio25", "gpio26", "gpio27", "gpio28";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio25", "gpio26", "gpio27", "gpio28";
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
+&tlmm {
 
 //[H1_BT_BRINGUP_S]
                 /* gpio pin mux for bluetooth enable pin */
-                pmx_bt_default {
+        pmx_bt_default {
 			bt_default: bt_default {
 				mux {
 					pins = "gpio81", "gpio24", "gpio92";
@@ -950,7 +850,7 @@
 					bias-disable;
 				};
 			};
-			
+
 			anx7418_interrupt_sleep: anx7418_interrupt_sleep {
 				mux {
 					pins = "gpio132";
@@ -1023,38 +923,6 @@
 				config {
 					pins = "gpio8", "gpio9", "gpio10",
 								"gpio11";
-					drive-strength = <6>;
-					bias-disable;
-				};
-			};
-		};
-
-		spi_12 {
-			spi_12_active: spi_12_active {
-				mux {
-					pins = "gpio85", "gpio86", "gpio87",
-								"gpio88";
-					function = "blsp_spi12";
-				};
-
-				config {
-					pins = "gpio85", "gpio86", "gpio87",
-								"gpio88";
-					drive-strength = <6>;
-					bias-disable;
-				};
-			};
-
-			spi_12_sleep: spi_12_sleep {
-				mux {
-					pins = "gpio85", "gpio86", "gpio87",
-								"gpio88";
-					function = "blsp_spi12";
-				};
-
-				config {
-					pins = "gpio85", "gpio86", "gpio87",
-								"gpio88";
 					drive-strength = <6>;
 					bias-disable;
 				};
@@ -1141,7 +1009,7 @@
 					bias-pull-up;
 				};
 			};
-			
+
 			pcie1_perst_default: pcie1_perst_default {
 				mux {
 					pins = "gpio130";
@@ -1154,7 +1022,7 @@
 					bias-pull-down;
 				};
 			};
-			
+
 			pcie1_wake_default: pcie1_wake_default {
 				mux {
 					pins = "gpio132";
@@ -1179,8 +1047,8 @@
 					drive-strength = <2>;
 					bias-disable;
 				};
-			}; 
-			
+			};
+
 			pcie1_wake_sleep: pcie1_wake_sleep {
 				mux {
 					pins = "gpio132";
@@ -2371,37 +2239,6 @@
 		};
 		/* NFC End */
 
-		/* pin set for IrRC */
-		irrc_uart {
-			label = "irrc_uart";
-
-			irrc_uart_active: irrc_uart_active {
-				mux {
-					pins = "gpio25", "gpio26";
-					function = "blsp_uart6";
-				};
-
-				config {
-					pins = "gpio25", "gpio26";
-					drive-strength = <2>;
-					bias-bus-hold;
-				};
-			};
-
-			irrc_uart_sleep: irrc_uart_sleep {
-				mux {
-					pins = "gpio25", "gpio26";
-					function = "blsp_uart6";
-				};
-
-				config {
-					pins = "gpio25", "gpio26";
-					drive-strength = <2>;
-					bias-bus-hold;
-				};
-			};
-		};
-
 		irrc_rst {
 			label = "irrc_rst";
 
@@ -2417,5 +2254,4 @@
 				bias-disable;
 			};
 		};
-	};
 };

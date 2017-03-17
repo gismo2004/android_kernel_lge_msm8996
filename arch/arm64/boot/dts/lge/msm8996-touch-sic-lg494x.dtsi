@@ -14,9 +14,9 @@
 	aliases {
 		spi12 = &spi_12;
 	};
+};
 
-	soc {
-		spi_12: spi@75ba000{    /* BLSP-2 QUP6 */
+&spi_12 {    /* BLSP-2 QUP6 */
 			status = "ok";
 			compatible = "qcom,spi-qup-v2";
 
@@ -133,7 +133,4 @@
 				panel_spec = "touch/h1/h1_limit.txt";
 				panel_spec_mfts_folder = "touch/h1/h1_limit_mfts.txt";
 			};
-		};
-	};
 };
-
