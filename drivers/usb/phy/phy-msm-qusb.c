@@ -325,7 +325,8 @@ err:
 	return ret;
 }
 
-static int qusb_phy_enable_power(struct qusb_phy *qphy, bool on)
+static int qusb_phy_enable_power(struct qusb_phy *qphy, bool on,
+						bool toggle_vdd)
 {
 	int ret = 0;
 
@@ -340,9 +341,11 @@ static int qusb_phy_enable_power(struct qusb_phy *qphy, bool on)
 	if (!on)
 		goto disable_vdda33;
 
-	ret = qusb_phy_vdd(qphy, true);
-	if (ret < 0)
-		goto err_vdd;
+	if (toggle_vdd) {
+		ret = qusb_phy_vdd(qphy, true);
+		if (ret < 0)
+			goto err_vdd;
+	}
 
 	ret = regulator_set_optimum_mode(qphy->vdda18, QUSB2PHY_1P8_HPM_LOAD);
 	if (ret < 0) {
@@ -423,7 +426,9 @@ put_vdda18_lpm:
 		dev_err(qphy->phy.dev, "Unable to set LPM of vdda18\n");
 
 disable_vdd:
-	ret = qusb_phy_vdd(qphy, false);
+	if (toggle_vdd) {
+		ret = qusb_phy_vdd(qphy, false);
+	}
 err_vdd:
 	if (toggle_vdd)
 		qphy->power_enabled = false;
@@ -463,7 +468,7 @@ static int qusb_phy_update_dpdm(struct usb_phy *phy, int value)
 	case POWER_SUPPLY_DP_DM_DPF_DMF:
 		dev_dbg(phy->dev, "POWER_SUPPLY_DP_DM_DPF_DMF\n");
 		if (!qphy->rm_pulldown) {
-			ret = qusb_phy_enable_power(qphy, true);
+			ret = qusb_phy_enable_power(qphy, true, false);
 			if (ret >= 0) {
 				qphy->rm_pulldown = true;
 				dev_dbg(phy->dev, "DP_DM_F: rm_pulldown:%d\n",
@@ -550,7 +555,7 @@ static int qusb_phy_update_dpdm(struct usb_phy *phy, int value)
 					writel_relaxed(0x0,
 					       qphy->tcsr_phy_lvl_shift_keeper);
 				dev_dbg(phy->dev, "turn off for HVDCP case\n");
-				ret = qusb_phy_enable_power(qphy, false);
+				ret = qusb_phy_enable_power(qphy, false, false);
 			}
 			if (ret >= 0) {
 				qphy->rm_pulldown = false;
@@ -833,7 +838,7 @@ static int qusb_phy_init(struct usb_phy *phy)
 
 	dev_dbg(phy->dev, "%s\n", __func__);
 
-	ret = qusb_phy_enable_power(qphy, true);
+	ret = qusb_phy_enable_power(qphy, true, true);
 	if (ret)
 		return ret;
 
@@ -1116,7 +1121,7 @@ static int qusb_phy_set_suspend(struct usb_phy *phy, int suspend)
 			if (qphy->tcsr_phy_lvl_shift_keeper)
 				writel_relaxed(0x0,
 					qphy->tcsr_phy_lvl_shift_keeper);
-			qusb_phy_enable_power(qphy, false);
+			qusb_phy_enable_power(qphy, false, true);
 			/*
 			 * Set put_into_high_z_state to true so next USB
 			 * cable connect, DPF_DMF request performs PHY
@@ -1124,7 +1129,9 @@ static int qusb_phy_set_suspend(struct usb_phy *phy, int suspend)
 			 * with or without USB cable, it doesn't require
 			 * to put QUSB PHY into high-z state.
 			 */
+#ifndef CONFIG_LGE_USB_G_ANDROID
 			qphy->put_into_high_z_state = true;
+#endif
 		}
 		qphy->suspended = true;
 	} else {
@@ -1136,7 +1143,7 @@ static int qusb_phy_set_suspend(struct usb_phy *phy, int suspend)
 			writel_relaxed(0x00,
 				qphy->base + QUSB2PHY_PORT_INTR_CTRL);
 		} else {
-			qusb_phy_enable_power(qphy, true);
+			qusb_phy_enable_power(qphy, true, true);
 			if (qphy->tcsr_phy_lvl_shift_keeper)
 				writel_relaxed(0x1,
 					qphy->tcsr_phy_lvl_shift_keeper);
@@ -1552,7 +1559,7 @@ static int qusb_phy_remove(struct platform_device *pdev)
 		qphy->clocks_enabled = false;
 	}
 
-	qusb_phy_enable_power(qphy, false);
+	qusb_phy_enable_power(qphy, false, true);
 
 	return 0;
 }

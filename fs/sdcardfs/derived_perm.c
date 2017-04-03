@@ -116,12 +116,13 @@ void get_derived_permission(struct dentry *parent, struct dentry *dentry, bool l
 		case PERM_ANDROID_DATA:
 		case PERM_ANDROID_OBB:
 		case PERM_ANDROID_MEDIA:
-			if(!locked)
-				mutex_lock (&pkgl_lock);
-			if(sbi->pkgl_id != NULL)
+			if(sbi->pkgl_id != NULL) {
+				if(!locked)
+					packagelist_lock(sbi->pkgl_id);
 				appid = get_appid(sbi->pkgl_id, dentry->d_name.name);
-			if(!locked)
-				mutex_unlock (&pkgl_lock);
+				if(!locked)
+					packagelist_unlock(sbi->pkgl_id);
+			}
 
 			if (appid != 0) {
 				info->d_uid = multiuser_get_uid(parent_info->userid, appid);

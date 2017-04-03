@@ -58,10 +58,15 @@ static int color_convert_enabled = 0;
 
 #if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
 #define SKIP_ROI_SIZE 160
-#else
+#elif defined(CONFIG_LGE_DISPLAY_H1_COMMON)
 #define SKIP_ROI_SIZE 680
+#elif defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
+#define SKIP_ROI_SIZE 800
 #endif
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+extern int lcd_watch_set_fd_ctl(struct msm_fb_data_type *mfd, int enable);
+#endif
 static int mdss_mdp_overlay_free_fb_pipe(struct msm_fb_data_type *mfd);
 static int mdss_mdp_overlay_fb_parse_dt(struct msm_fb_data_type *mfd);
 static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd);
@@ -2024,20 +2029,10 @@ set_roi:
 #if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
 	if (skip_partial_update) {
 #if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
-#if defined(CONFIG_LGE_DISPLAY_MARQUEE_SUPPORTED)
-		// border fill skip condition
-		// U3 -> U2
-		// U2 -> U3 partial
-		if ((mfd->index ==0 && mfd->panel_info->aod_node_from_user == 1 && mfd->panel_info->aod_keep_u2 == AOD_MOVE_TO_U2) ||
-			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_BLANK && !mfd->panel_info->mq_mode) ||
-			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK && !mfd->panel_info->mq_mode) ||
-			is_black_frame) {
-#else
 		if ((mfd->index ==0 && mfd->panel_info->aod_node_from_user == 1 && mfd->panel_info->aod_keep_u2 == AOD_MOVE_TO_U2) ||
 			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_BLANK) ||
 			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK) ||
 			is_black_frame) {
-#endif
 #else
 		if ((mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_BLANK) ||
 			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK) ||
@@ -2127,6 +2122,7 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 	}
 	mutex_lock(&mdp5_data->list_lock);
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
 	/*
 	 * check if there is a secure display session
 	 */
@@ -2136,8 +2132,45 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 			pr_debug("Secure pipe: %u : %08X\n",
 					pipe->num, pipe->flags);
 		}
+
+		if (mfd->index == 0 && pipe->aod_font_download == true) {
+			if (mfd->watch.current_font_type != mfd->watch.requested_font_type)
+				mfd->font_download_start = true;
+			pipe->aod_font_download = false;
+		}
 	}
 
+	/* If Font download frame
+	    1. Send Font download enable command
+	    2. Send display commit
+	    3. Send Font download disable command when next commit
+	*/
+	if (mfd->index == 0 && mfd->font_download_start == true) {
+		pr_info("[Watch] font_download_start\n");
+		lcd_watch_set_fd_ctl(mfd, 1);
+		mfd->font_download_start = false;
+		mfd->font_download_sent = true;
+		mfd->watch.current_font_type = mfd->watch.requested_font_type;
+	}
+	else if (mfd->index == 0 && mfd->font_download_sent == true) {
+		pr_info("[Watch] font_download_end\n");
+		mfd->font_download_sent = false;
+		mfd->watch_need_init = true;
+		mdelay(32);
+		lcd_watch_set_fd_ctl(mfd, 0);
+	}
+#else
+	/*
+	* check if there is a secure display session
+	*/
+	list_for_each_entry(pipe, &mdp5_data->pipes_used, list) {
+		if (pipe->flags & MDP_SECURE_DISPLAY_OVERLAY_SESSION) {
+			sd_in_pipe = 1;
+			pr_debug("Secure pipe: %u : %08X\n",
+					pipe->num, pipe->flags);
+		}
+	}
+#endif
 	/*
 	 * start secure display session if there is secure display session and
 	 * sd_enabled is not true.
@@ -2267,7 +2300,6 @@ commit_fail:
 		mutex_unlock(ctl->shared_lock);
 	mdss_iommu_ctrl(0);
 	ATRACE_END(__func__);
-
 	return ret;
 }
 
@@ -5188,26 +5220,6 @@ static void mdss_mdp_handle_invalid_switch_state(struct msm_fb_data_type *mfd)
 	}
 }
 
-#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
-static int activate_memory_detection = 0;
-void activate_frame_memory_dectection(struct msm_fb_data_type *mfd, int activation)
-{
-	int rc;
-	struct mdss_panel_data *pdata;
-	struct mdss_dsi_ctrl_pdata *ctrl;
-	pdata = dev_get_platdata(&mfd->pdev->dev);
-	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
-	if(activation) {
-		rc = oem_mdss_aod_cmd_send(mfd, AOD_CMD_U3_READY);
-	} else {
-		rc = oem_mdss_aod_cmd_send(mfd, AOD_CMD_U2_READY);
-	}
-
-	if (rc)
-		pr_err("[AOD] can't send AOD enable command after null commit!!!\n");
-}
-#endif
-
 static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 {
 	int rc;
@@ -5273,14 +5285,6 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 			goto end;
 		if (mfd->panel_info->type != WRITEBACK_PANEL) {
 			atomic_inc(&mfd->mdp_sync_pt_data.commit_cnt);
-#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
-			if (mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK &&
-				mfd->panel_info->aod_keep_u2 == AOD_KEEP_U2) {
-				activate_frame_memory_dectection(mfd, 1);
-				activate_memory_detection = 1;
-				pr_info("[AOD] activate frame memory write detection..\n");
-			}
-#endif
 			rc = mdss_mdp_overlay_kickoff(mfd, NULL);
 #if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED) && !defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
 			if (!rc && mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK &&
@@ -5390,14 +5394,6 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 		pr_debug("panel not turned off. keeping overlay on\n");
 		goto ctl_stop;
 	}
-
-#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
-	if (mfd->index == 0 && activate_memory_detection == 1) {
-		activate_frame_memory_dectection(mfd, 0);
-		activate_memory_detection = 0;
-		pr_info("[AOD] inactivate frame memory write detection.. \n");
-	}
-#endif
 
 	mutex_lock(&mdp5_data->ov_lock);
 
@@ -6087,10 +6083,6 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 
 	if (mdss_mdp_pp_overlay_init(mfd))
 		pr_warn("Failed to initialize pp overlay data.\n");
-
-#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
-	activate_memory_detection = 0;
-#endif
 
 	return rc;
 init_fail:

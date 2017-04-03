@@ -210,23 +210,12 @@ appid_t get_appid(void *pkgl_id, const char *app_name)
 		return 0;
 	}
 
-	if (!in_atomic()) {
-		packagelist_lock(pkgl_id);
-	}
 	hash_for_each_possible(pkgl_dat->package_to_appid, hash_cur, hlist, hash) {
 		if (!strcasecmp(app_name, hash_cur->key)) {
 			ret_id = (appid_t)hash_cur->value;
-		
-			if (!in_atomic()) {
-				packagelist_unlock(pkgl_id);
-			}
 			return ret_id;
 		}
 	}
-	if (!in_atomic()) {
-		packagelist_unlock(pkgl_id);
-	}
-
 	return 0;
 }
 
@@ -356,9 +345,7 @@ static int read_package_list(struct packagelist_data *pkgl_dat) {
 	}
 
 	sys_close(fd);
-	packagelist_unlock(pkgl_dat);
 
-	mutex_lock (&pkgl_lock);
 	/* Regenerate ownership details using newly loaded mapping */
 	list_for_each(list_pos, &(pkgl_dat->pkg_supers.list)) {
 		pkg_super = list_entry(list_pos, struct packagelist_super, list);
@@ -366,7 +353,7 @@ static int read_package_list(struct packagelist_data *pkgl_dat) {
 			get_derived_permission_recursive(pkg_super->sb->s_root,true);
 		}
 	}
-	mutex_unlock (&pkgl_lock);
+	packagelist_unlock(pkgl_dat);
 
 	return 0;
 }
