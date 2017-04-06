@@ -409,6 +409,7 @@ static int msm_ois_init(struct msm_ois_ctrl_t *o_ctrl)
 	o_ctrl->i2c_client.cci_client->i2c_freq_mode = I2C_FAST_PLUS_MODE;
 #endif
 	ret = ois_i2c_e2p_read(OIS_MAKER_ID_ADDR, &chipid, 1);
+	printk("%s: ois_i2c_e2p_read returned chipid %d", __func__, chipid);
 
 	switch (chipid)
 	{
@@ -605,6 +606,7 @@ static int32_t msm_ois_config(struct msm_ois_ctrl_t *o_ctrl,
 #ifdef CONFIG_MACH_MSM8996_LUCYE
 		eeprom_slave_id = cdata->eeprom_slave_addr >> 1;
 #endif
+		printk("%s: initializing OIS (msm_ois_init)\n", __func__);
 		rc = msm_ois_init(o_ctrl);
 		if (rc < 0)
 			pr_err("msm_ois_init failed %d\n", rc);
@@ -848,6 +850,7 @@ static long msm_ois_subdev_ioctl(struct v4l2_subdev *sd,
 	void __user *argp = (void __user *)arg;
 	CDBG("Enter\n");
 	CDBG("%s:%d o_ctrl %pK argp %pK\n", __func__, __LINE__, o_ctrl, argp);
+	printk("%s: recieved ioctl %p\n", __func__, argp);
 	switch (cmd) {
 	case VIDIOC_MSM_SENSOR_GET_SUBDEV_ID:
 		return msm_ois_get_subdev_id(o_ctrl, argp);
